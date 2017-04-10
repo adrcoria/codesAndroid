@@ -1,0 +1,110 @@
+[?21/?03/?2017 08:54 a.m.] Mar Mejía Murillo: 
+public class DBManager extends SQLiteOpenHelper {
+public class DBManager extends SQLiteOpenHelper {
+
+    /*Notes
+    1- In the constructor we define the Path of the SQLite Database file
+    2- The Database will be create ultil we call getWritableDatabase function
+    3- We can use SQL language with execSQL or use ContentValues
+    4- The onUpgrade function is used to modify the DB structure. We can use ALTER TABLE
+    5- Cursor class: This interface provides random read-write access to the result set returned by a database query.
+    6- Cursor class reference: https://developer.android.com/reference/android/database/Cursor.html
+    7- Constraints in SQLite: http://zetcode.com/db/sqlite/constraints/
+    */
+
+    public DBManager(Context context){
+        super(context, /*Environment.getExternalStorageDirectory().getAbsolutePath() + "/Contactos/db.sqlite"*/
+                context.getExternalFilesDir(null).getAbsolutePath() + "/" +  "Contactos/db.sqlite"
+                , null, 1);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+        Log.d(Constants.TAG, "onCreate: CREATE TABLE IF NOT EXISTS CONTACTOS (ID INTEGER PRIMARY KEY AUTOINCREMENT,\" +\n" +
+                "                \" NAME STRING, ADDRESS STRING, PHONE STRING, PHOTO BLOB);");
+
+        db.execSQL("CREATE TABLE IF NOT EXISTS CONTACTOS (ID INTEGER PRIMARY KEY AUTOINCREMENT," +
+                " NAME STRING, ADDRESS STRING, PHONE STRING, PHOTO BLOB);");
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        Log.d(Constants.TAG, "onUpgrade oldVersion: " + String.valueOf(oldVersion) + " newVersion: " + String.valueOf(newVersion));
+
+        if (newVersion > oldVersion) {
+            db.execSQL("ALTER TABLE contactos ADD COLUMN new_column INTEGER DEFAULT 0");
+        }
+    }
+
+    public boolean insertContact(String name, String address, String phone, byte[] photo) {
+        Log.d(Constants.TAG, "DB Inserting Contact: " + name + ", " + address + ", " + phone + ", " + String.valueOf(photo.length));
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(Constants.NAME, name);
+        contentValues.put(Constants.ADDRESS, address);
+        contentValues.put(Constants.PHONE, phone);
+        contentValues.put(Constants.PHOTO, photo);
+
+        long response = db.insert(Constants.CONTACTOS, null, contentValues);
+        if (response == -1) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public Contact searchContact(String nameToSearch){
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("select * from contactos where NAME = " + "'" + nameToSearch + "'", null);
+        if (cursor.getCount() > 0){
+            cursor.moveToFirst();
+            String name = cursor.getString(cursor.getColumnIndex(Constants.NAME));
+            String address = cursor.getString(cursor.getColumnIndex(Constants.ADDRESS));
+            String phone = cursor.getString(cursor.getColumnIndex(Constants.PHONE));
+            byte[] photo = cursor.getBlob(cursor.getColumnIndex(Constants.PHOTO));
+
+            Contact contact = new Contact();
+            contact.name = name;
+            contact.address = address;
+            contact.phone = phone;
+            contact.photo = photo;
+
+            return contact;
+        }else{
+            Log.d(Constants.TAG,"Contact not found");
+            return null;
+        }
+    }
+
+    public boolean updateContact (Integer id, String name, String phone, String email, String street,String place) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put("name", name);
+        contentValues.put("phone", phone);
+        contentValues.put("email", email);
+        contentValues.put("street", street);
+        contentValues.put("place", place);
+        db.update("contactos", contentValues, "id = ? ", new String[] { Integer.toString(id) } );
+        return true;
+    }
+
+    public int fetchContacts(){
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("select * from contactos", null);
+        return cursor.getCount();
+
+    }
+
+    public Cursor fetchAllContacts(){
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.rawQuery("select id _id, name, address, photo from contactos", null);
+        return cursor;
+    }
+
+    public void deleteContact(int id){
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete("contactos","ID=?", new String[]{String.valueOf(id)});
+        db.close();
+    }
+
+} 
